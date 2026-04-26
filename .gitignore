@@ -1,0 +1,25 @@
+# Secrets
+.env
+.env.local
+
+# Runtime outputs
+runs/
+
+# Question-generation intermediate artifacts
+candidates/
+
+# Local-only design docs (spec + plan)
+docs/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.venv/
+.mypy_cache/
+
+# OS
+.DS_Store
+*.bak

@@ -1,0 +1,126 @@
+{
+  "benchmark_name": "Retail Text-to-SQL Benchmark",
+  "database": "retail",
+  "questions": [
+    {
+      "id": 1,
+      "level": "simple",
+      "question": "How many products are in the catalog?",
+      "expected_sql": "SELECT count() FROM retail.DimProduct",
+      "tricky_aspects": []
+    },
+    {
+      "id": 7,
+      "level": "simple",
+      "question": "What are the top 10 most expensive products by unit price?",
+      "expected_sql": "SELECT ProductName, UnitPrice FROM retail.DimProduct ORDER BY UnitPrice DESC LIMIT 10",
+      "tricky_aspects": []
+    },
+    {
+      "id": 11,
+      "level": "medium",
+      "question": "Show total sales amount by product category",
+      "expected_sql": "SELECT pc.ProductCategoryName, sum(s.SalesAmount) as total_sales FROM retail.FactOnlineSales s JOIN retail.DimProduct p ON s.ProductKey = p.ProductKey JOIN retail.DimProductSubcategory ps ON p.ProductSubcategoryKey = ps.ProductSubcategoryKey JOIN retail.DimProductCategory pc ON ps.ProductCategoryKey = pc.ProductCategoryKey GROUP BY pc.ProductCategoryName ORDER BY total_sales DESC",
+      "tricky_aspects": [
+        "three_table_join"
+      ]
+    },
+    {
+      "id": 19,
+      "level": "medium",
+      "question": "What is the average order value by customer gender?",
+      "expected_sql": "SELECT c.Gender, avg(s.SalesAmount) as avg_order_value FROM retail.FactOnlineSales s JOIN retail.DimCustomer c ON s.CustomerKey = c.CustomerKey GROUP BY c.Gender",
+      "tricky_aspects": [
+        "gender_string"
+      ]
+    },
+    {
+      "id": 21,
+      "level": "complex",
+      "question": "What is the current inventory level for each product in each store?",
+      "expected_sql": "WITH latest AS (SELECT StoreKey, ProductKey, MAX(DateKey) as max_date FROM retail.FactInventory GROUP BY StoreKey, ProductKey) SELECT s.StoreName, p.ProductName, i.OnHandQuantity FROM retail.FactInventory i JOIN latest l ON i.StoreKey = l.StoreKey AND i.ProductKey = l.ProductKey AND i.DateKey = l.max_date JOIN retail.DimStore s ON i.StoreKey = s.StoreKey JOIN retail.DimProduct p ON i.ProductKey = p.ProductKey",
+      "tricky_aspects": [
+        "max_date_per_group",
+        "snapshot_data"
+      ]
+    },
+    {
+      "id": 24,
+      "level": "complex",
+      "question": "What is the return rate by product category?",
+      "expected_sql": "SELECT pc.ProductCategoryName, sum(s.ReturnQuantity) as total_returns, sum(s.SalesQuantity) as total_sales, round(sum(s.ReturnQuantity) * 100.0 / nullIf(sum(s.SalesQuantity), 0), 2) as return_rate_pct FROM retail.FactOnlineSales s JOIN retail.DimProduct p ON s.ProductKey = p.ProductKey JOIN retail.DimProductSubcategory ps ON p.ProductSubcategoryKey = ps.ProductSubcategoryKey JOIN retail.DimProductCategory pc ON ps.ProductCategoryKey = pc.ProductCategoryKey GROUP BY pc.ProductCategoryName",
+      "tricky_aspects": [
+        "ratio_calculation",
+        "division_by_zero",
+        "multi_join"
+      ]
+    },
+    {
+      "id": 31,
+      "level": "advanced",
+      "question": "Compare actual sales revenue to budget for each product category in 2009",
+      "expected_sql": "SELECT pc.ProductCategoryName, sum(CASE WHEN sp.ScenarioKey = 1 THEN sp.Amount ELSE 0 END) as actual, sum(CASE WHEN sp.ScenarioKey = 2 THEN sp.Amount ELSE 0 END) as budget FROM retail.FactStrategyPlan sp JOIN retail.DimProductCategory pc ON sp.ProductCategoryKey = pc.ProductCategoryKey JOIN retail.DimAccount a ON sp.AccountKey = a.AccountKey WHERE a.AccountName = 'Sale Revenue' AND toYear(sp.DateKey) = 2009 GROUP BY pc.ProductCategoryName",
+      "tricky_aspects": [
+        "scenario_filtering",
+        "pivot_logic",
+        "account_filter"
+      ]
+    },
+    {
+      "id": 35,
+      "level": "advanced",
+      "question": "List all employees and their manager's name",
+      "expected_sql": "SELECT e.FirstName, e.LastName, e.Title, m.FirstName as manager_first, m.LastName as manager_last FROM retail.DimEmployee e LEFT JOIN retail.DimEmployee m ON e.ParentEmployeeKey = m.EmployeeKey",
+      "tricky_aspects": [
+        "self_join_hierarchy",
+        "nullable_fk"
+      ]
+    },
+    {
+      "id": 41,
+      "level": "expert",
+      "question": "What were last quarter's sales?",
+      "expected_sql": "-- Ambiguous: assuming last quarter of available data (Q4 2009)\nSELECT sum(SalesAmount) FROM retail.FactOnlineSales WHERE DateKey >= '2009-10-01' AND DateKey <= '2009-12-31'",
+      "tricky_aspects": [
+        "ambiguous_time_reference",
+        "requires_data_context"
+      ]
+    },
+    {
+      "id": 45,
+      "level": "expert",
+      "question": "Which stores have the best sales per square foot?",
+      "expected_sql": "SELECT s.StoreName, sum(f.SalesAmount) as total_sales, s.SellingAreaSize, round(sum(f.SalesAmount) / nullIf(s.SellingAreaSize, 0), 2) as sales_per_sqft FROM retail.FactSales f JOIN retail.DimStore s ON f.StoreKey = s.StoreKey WHERE s.SellingAreaSize IS NOT NULL AND s.SellingAreaSize > 0 GROUP BY s.StoreKey, s.StoreName, s.SellingAreaSize ORDER BY sales_per_sqft DESC LIMIT 10",
+      "tricky_aspects": [
+        "domain_knowledge",
+        "null_handling",
+        "derived_metric"
+      ]
+    }
+  ],
+  "schema_challenges": {
+    "string_booleans": [
+      "IsSalesPerson: Yes/No",
+      "IsWorkDay: WorkDay/WeekEnd",
+      "IsHoliday: Yes/No",
+      "Gender: M/F",
+      "MaritalStatus: M/S"
+    ],
+    "hierarchies": [
+      "Product->Subcategory->Category",
+      "Employee->ParentEmployee",
+      "Account->ParentAccount",
+      "Entity->ParentEntity"
+    ],
+    "multiple_fact_tables": [
+      "FactOnlineSales (online)",
+      "FactSales (all channels)",
+      "FactInventory (snapshots)",
+      "FactStrategyPlan (planning)"
+    ],
+    "implicit_defaults": [
+      "PromotionKey=1 means No Discount",
+      "Various NULL foreign keys"
+    ]
+  }
+}

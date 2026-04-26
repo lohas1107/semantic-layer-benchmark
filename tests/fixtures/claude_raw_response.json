@@ -1,0 +1,1 @@
+{"result": "```sql\nSELECT count() FROM retail.DimProduct\n```\n", "usage": {"input_tokens": 8100, "output_tokens": 25}, "session_id": "sess-abc", "is_error": false}
