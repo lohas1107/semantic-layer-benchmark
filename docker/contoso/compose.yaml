@@ -1,0 +1,37 @@
+# Benchmark database for the Open WebUI agentic runner.
+#   docker compose -f docker/contoso/compose.yaml up -d --wait
+# Joins Open WebUI's network so the run_sql Workspace Tool reaches it as
+# contoso-pg:5432; the harness uses 127.0.0.1:5433 (PG_DSN in .env).
+name: contoso
+
+services:
+  contoso-pg:
+    # pinned by digest so every eval run uses identical data
+    image: ${CONTOSO_IMAGE:-lohas1107/contoso:pg-cube-1.0.0@sha256:0edd1919ec749fb3199344e466a20ea68e23a80593ae579ed99ceb618065a270}
+    container_name: contoso-pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${CONTOSO_PG_PASSWORD:-contoso}
+      BENCH_RO_PASSWORD: ${BENCH_RO_PASSWORD:-bench_ro}
+    ports:
+      - "127.0.0.1:5433:5432"
+    shm_size: 1g
+    command: ["postgres", "-c", "shared_buffers=2GB", "-c", "work_mem=64MB",
+              "-c", "max_parallel_workers_per_gather=4"]
+    volumes:
+      - contoso-pg-data:/var/lib/postgresql/data
+    networks: [default, openwebui]
+    healthcheck:
+      # ready only after the init restore finished and bench_ro exists
+      test: ["CMD-SHELL", "psql -U postgres -d contoso -tAc \"select 1 from pg_roles where rolname='bench_ro'\" | grep -q 1"]
+      interval: 5s
+      retries: 120
+      start_period: 30s
+
+volumes:
+  contoso-pg-data:
+
+networks:
+  openwebui:
+    name: open-webui_default
+    external: true
