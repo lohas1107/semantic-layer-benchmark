@@ -1,16 +1,22 @@
 [project]
-name = "semantic-layer-benchmark"
-version = "0.1.0"
-description = "Text-to-SQL benchmark: raw DDL vs raw DDL + semantic-layer markdown, across Claude (Opus/Sonnet) and GPT-5.4"
+name = "cube"
+version = "0.2.0"
+description = "Declarative multi-model, multi-engine Text-to-SQL & Semantic Layer benchmark"
 requires-python = ">=3.11,<3.12"
 readme = "README.md"
 dependencies = [
     "clickhouse-connect>=0.7",
     "httpx>=0.27",
+    "openai>=1.0",
     "psycopg[binary]>=3.2",
+    "pydantic>=2.0",
     "python-dotenv>=1.0",
+    "pyyaml>=6.0",
     "rich>=13.7",
 ]
+
+[project.scripts]
+cube = "cube.cli:main"
 
 [dependency-groups]
 dev = [
@@ -19,13 +25,16 @@ dev = [
     "ruff>=0.6",
 ]
 
-[tool.uv]
-package = false
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cube"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-pythonpath = ["."]
 
 [tool.ruff]
 line-length = 100
@@ -33,4 +42,3 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
-

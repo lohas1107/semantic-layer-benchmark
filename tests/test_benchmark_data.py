@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from benchmarks.text_to_sql.benchmark_data import BenchmarkQuestion, load_benchmark
+from cube.types import BenchmarkQuestion, load_benchmark
 
 
 def test_load_benchmark_parses_100_questions(repo_root):
-    qs = load_benchmark(repo_root / "text_to_sql_benchmark.json")
+    qs = load_benchmark(repo_root / "datasets" / "clickhouse" / "benchmark.json")
     assert isinstance(qs, list)
     assert len(qs) == 100
     for q in qs:
@@ -16,6 +16,6 @@ def test_load_benchmark_parses_100_questions(repo_root):
 
 
 def test_question_ids_are_sequential(repo_root):
-    qs = load_benchmark(repo_root / "text_to_sql_benchmark.json")
+    qs = load_benchmark(repo_root / "datasets" / "postgres" / "benchmark.json")
     ids = [q.id for q in qs]
     assert ids == list(range(1, 101))

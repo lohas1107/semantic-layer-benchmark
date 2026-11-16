@@ -1,11 +1,12 @@
-"""Integration tests for ClickHouse client. Require live .env and network."""
+"""Integration tests for ClickHouse engine. Require live .env and network."""
 from __future__ import annotations
 
 import os
 
 import pytest
 
-from benchmarks.text_to_sql.clickhouse_client import ClickHouseError, ExecResult, make_client
+from cube.engines.clickhouse import ClickHouseError, make_clickhouse_engine
+from cube.types import ExecResult
 
 pytestmark = pytest.mark.skipif(
     not os.getenv("CLICKHOUSE_HOST"),
@@ -14,8 +15,8 @@ pytestmark = pytest.mark.skipif(
 
 
 def test_execute_simple_count():
-    client = make_client()
-    result = client.execute("SELECT count() FROM retail.DimProduct")
+    engine = make_clickhouse_engine()
+    result = engine.execute("SELECT count() FROM retail.DimProduct")
     assert isinstance(result, ExecResult)
     assert len(result.rows) == 1
     assert len(result.rows[0]) == 1
@@ -25,12 +26,12 @@ def test_execute_simple_count():
 
 
 def test_execute_enforces_row_cap():
-    client = make_client()
-    result = client.execute("SELECT number FROM numbers(500)", row_cap=10)
+    engine = make_clickhouse_engine()
+    result = engine.execute("SELECT number FROM numbers(500)", row_cap=10)
     assert len(result.rows) == 10
 
 
 def test_execute_invalid_sql_raises():
-    client = make_client()
+    engine = make_clickhouse_engine()
     with pytest.raises(ClickHouseError):
-        client.execute("SELECT not_a_column FROM retail.DimProduct")
+        engine.execute("SELECT not_a_column FROM retail.DimProduct")

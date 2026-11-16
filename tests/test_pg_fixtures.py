@@ -1,14 +1,26 @@
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 import pytest
 
-from scripts.pg.build_fixtures import build_benchmark, convert_ddl, pg_type, stale_outputs
+_BUILD_PATH = Path(__file__).resolve().parents[1] / "datasets" / "postgres" / "build_fixtures.py"
+_SPEC = importlib.util.spec_from_file_location("pg_build_fixtures", _BUILD_PATH)
+assert _SPEC and _SPEC.loader
+_MOD = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(_MOD)
+
+build_benchmark = _MOD.build_benchmark
+convert_ddl = _MOD.convert_ddl
+pg_type = _MOD.pg_type
+stale_outputs = _MOD.stale_outputs
 
 
 def test_generated_pg_fixtures_are_up_to_date():
     stale = stale_outputs()
     assert not stale, (
-        f"stale: {[p.name for p in stale]}; run `uv run python scripts/pg/build_fixtures.py`"
+        f"stale: {[p.name for p in stale]}; run `uv run python datasets/postgres/build_fixtures.py`"
     )
 
 
@@ -20,7 +32,10 @@ def test_pg_type_maps_nullable_and_rejects_unknown():
 
 
 def test_convert_ddl_keeps_identifiers_unquoted():
-    ddl = "CREATE TABLE retail.DimX\n(\n    `XKey` Int32,\n    `Name` Nullable(String)\n)\nENGINE = MergeTree"
+    ddl = (
+        "CREATE TABLE retail.DimX\n(\n    `XKey` Int32,\n"
+        "    `Name` Nullable(String)\n)\nENGINE = MergeTree"
+    )
     out = convert_ddl(ddl)
     assert "CREATE TABLE retail.DimX" in out
     assert "    XKey integer NOT NULL" in out

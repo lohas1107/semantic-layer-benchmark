@@ -1,0 +1,56 @@
+experiment:
+  name: gemma4-26b-pg-agentic-local
+  description: "Gemma 4 26B-A4B on PostgreSQL Contoso via native Python agentic_local tool loop"
+  tags: [postgres, gemma4, agentic, local]
+
+engine:
+  type: postgres
+  dsn_env: PG_DSN
+  exec_timeout_s: 30
+  row_cap: 100
+
+dataset:
+  path: datasets/postgres/benchmark.json
+  schema: datasets/postgres/schema.sql
+  semantic_layer: datasets/postgres/semantic_layer.md
+
+systems:
+  - id: gemma4-26b__local-raw
+    label: "Gemma 4 26B raw (Agentic Local)"
+    runner: agentic_local
+    mode: raw
+    model: google/gemma-4-26B-A4B-it
+    provider:
+      base_url_env: NEBIUS_BASE_URL
+      api_key_env: NEBIUS_TOKEN
+    params:
+      temperature: 0.0
+      max_tokens: 4096
+      timeout_s: 300
+      max_tool_rounds: 15
+    concurrency: 4
+
+  - id: gemma4-26b__local-semantic
+    label: "Gemma 4 26B + Sem (Agentic Local)"
+    runner: agentic_local
+    mode: semantic
+    model: google/gemma-4-26B-A4B-it
+    provider:
+      base_url_env: NEBIUS_BASE_URL
+      api_key_env: NEBIUS_TOKEN
+    params:
+      temperature: 0.0
+      max_tokens: 4096
+      timeout_s: 300
+      max_tool_rounds: 15
+    concurrency: 4
+
+judge:
+  runner: claude_cli
+  model: claude-sonnet-4-6
+  concurrency: 5
+  row_preview_limit: 10
+
+lifecycle:
+  before_run: infra/nebius/endpoint_up.sh --model google/gemma-4-26B-A4B-it
+  after_run: infra/nebius/endpoint_down.sh
