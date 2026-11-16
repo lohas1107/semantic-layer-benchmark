@@ -219,12 +219,25 @@ def score_one(
     """Score one (question, system) pair.
 
     Skip rules (in order):
-      - Candidate has any error → verdict="fail", skip judge.
       - Reference errored → verdict="excluded" (can't grade), skip judge.
+      - Candidate has any error → verdict="fail", skip judge.
       - Both ref and candidate rows empty (and both executed ok) → trivial pass, skip.
 
     Otherwise: build prompt, invoke judge, return verdict.
     """
+    # Reference first: an ungradable question is excluded for every system,
+    # whether or not the candidate also errored (paper: q33 excluded, n=99).
+    if reference.get("error"):
+        return ScoreResult(
+            verdict="excluded",
+            analytical_verdict="excluded",
+            reason=f"reference_error: {reference['error']}",
+            skipped_judge=True,
+            judge_tokens_in=0,
+            judge_tokens_out=0,
+            judge_latency_ms=0,
+        )
+
     cand_error = (
         candidate.get("error")
         or candidate.get("claude_error")
@@ -235,17 +248,6 @@ def score_one(
             verdict="fail",
             analytical_verdict="fail",
             reason=str(cand_error),
-            skipped_judge=True,
-            judge_tokens_in=0,
-            judge_tokens_out=0,
-            judge_latency_ms=0,
-        )
-
-    if reference.get("error"):
-        return ScoreResult(
-            verdict="excluded",
-            analytical_verdict="excluded",
-            reason=f"reference_error: {reference['error']}",
             skipped_judge=True,
             judge_tokens_in=0,
             judge_tokens_out=0,
