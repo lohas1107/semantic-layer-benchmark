@@ -14,7 +14,7 @@ from rich.console import Console
 from rich.progress import Progress
 
 from benchmarks.text_to_sql.benchmark_data import load_benchmark
-from benchmarks.text_to_sql.config import REPO_ROOT
+from benchmarks.text_to_sql.engines import ENGINES, get_engine
 from benchmarks.text_to_sql.paths import (
     ensure,
     question_path,
@@ -24,30 +24,20 @@ from benchmarks.text_to_sql.paths import (
 )
 from benchmarks.text_to_sql.scorer import ScoreResult, score_one
 
-BENCHMARK_JSON = REPO_ROOT / "text_to_sql_benchmark.json"
-SCHEMA_FIXTURE = REPO_ROOT / "fixtures" / "retail_schema.sql"
-
-# Default systems scored when present. Adding a new model to the run is just
-# `python scripts/run_claude.py --model X [--semantic]` or `run_codex.py` —
-# the scorer will pick up the resulting directory automatically.
-SYSTEMS = (
-    "claude_claude_opus_4_7_raw",
-    "claude_claude_opus_4_7_semantic",
-    "claude_claude_sonnet_4_6_raw",
-    "claude_claude_sonnet_4_6_semantic",
-    "codex_gpt_5_4_raw",
-    "codex_gpt_5_4_semantic",
-)
 MAX_CONCURRENT = 5
+NON_SYSTEM_DIRS = {"reference", "scoring"}
 
 
-def _system_dir(run_id: str, system: str) -> Path:
-    """Return the per-question outputs dir for a system, if it exists."""
-    if system.startswith(("claude_", "codex_")):
-        d = run_dir(run_id) / system
-        if d.exists():
-            return d
-    raise ValueError(system)
+def discover_systems(run_id: str, *, root: Path | None = None) -> list[str]:
+    """Every runs/<run_id>/<dir> that holds per-question outputs is a system."""
+    base = run_dir(run_id, root=root)
+    if not base.exists():
+        return []
+    return sorted(
+        d.name
+        for d in base.iterdir()
+        if d.is_dir() and d.name not in NON_SYSTEM_DIRS and any(d.glob("q*.json"))
+    )
 
 
 def _load_json(path: Path) -> dict:
@@ -73,23 +63,20 @@ async def _score_one_async(
         )
 
 
-async def main_async(run_id: str) -> int:
+async def main_async(run_id: str, engine_name: str = "clickhouse") -> int:
     console = Console()
-    if not SCHEMA_FIXTURE.exists():
-        console.print("[red]fixtures/retail_schema.sql missing. Run fetch_schema first.[/red]")
+    engine = get_engine(engine_name)
+    if not engine.schema_fixture.exists():
+        console.print(f"[red]{engine.schema_fixture} missing.[/red]")
         return 1
-    schema_text = SCHEMA_FIXTURE.read_text(encoding="utf-8")
-    questions = load_benchmark(BENCHMARK_JSON)
+    schema_text = engine.schema_fixture.read_text(encoding="utf-8")
+    questions = load_benchmark(engine.benchmark_json)
     ref_dir = reference_dir(run_id)
 
     tasks: list[tuple[str, int, asyncio.Task]] = []
     sem = asyncio.Semaphore(MAX_CONCURRENT)
-    for system in SYSTEMS:
-        try:
-            sys_dir = _system_dir(run_id, system)
-        except ValueError:
-            # System has no output dir for this run — skip silently.
-            continue
+    for system in discover_systems(run_id):
+        sys_dir = run_dir(run_id) / system
         out_dir = ensure(scoring_dir(run_id, system))
         for q in questions:
             out_path = question_path(out_dir, q.id)
@@ -155,8 +142,10 @@ async def main_async(run_id: str) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--run-id", required=True)
+    parser.add_argument("--engine", choices=sorted(ENGINES), default="clickhouse",
+                        help="Selects the question file and DDL shown to the judge")
     args = parser.parse_args(argv)
-    return asyncio.run(main_async(args.run_id))
+    return asyncio.run(main_async(args.run_id, args.engine))
 
 
 if __name__ == "__main__":
