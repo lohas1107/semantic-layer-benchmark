@@ -3,7 +3,7 @@
 1. Ensure an OpenAI-compatible connection to the Nebius vLLM endpoint exists
    (only when NEBIUS_BASE_URL and NEBIUS_TOKEN are set).
 2. Create or update the self-built Workspace Tool `run_sql` from
-   openwebui/tools/run_sql.py and set its PG_DSN valve.
+   infra/openwebui/run_sql_tool.py and set its PG_DSN valve.
 
 Env: OPENWEBUI_URL, OPENWEBUI_API_KEY (admin), OPENWEBUI_RUN_SQL_TOOL_ID,
      OPENWEBUI_PG_DSN (DSN as seen from the Open WebUI container),
@@ -24,7 +24,7 @@ from dotenv import load_dotenv
 
 from cube.config import REPO_ROOT
 
-TOOL_FILE = REPO_ROOT / "openwebui" / "tools" / "run_sql.py"
+TOOL_FILE = REPO_ROOT / "infra" / "openwebui" / "run_sql_tool.py"
 DEFAULT_DSN = "postgresql://bench_ro:bench_ro@contoso-pg:5432/contoso"
 NEBIUS_TUNNEL_RE = re.compile(r"^https://[^/]+\.tunnel\.applications\.[^/]+\.nebius\.cloud(/|$)")
 
@@ -68,7 +68,7 @@ def ensure_tool(http: httpx.Client, tool_id: str, dsn: str) -> str:
         "content": content,
         "meta": {"description": "Read-only SQL on the Contoso PostgreSQL benchmark DB",
                  "manifest": {}},
-        "commit_message": "sync from openwebui/tools/run_sql.py",
+        "commit_message": "sync from infra/openwebui/run_sql_tool.py",
     }
     existing = http.get(f"/api/v1/tools/id/{tool_id}")
     if existing.status_code == 200:
