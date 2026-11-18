@@ -44,7 +44,7 @@ class ExperimentMeta(BaseModel):
 
 class EngineConfig(BaseModel):
     type: Literal["clickhouse", "postgres"]
-    dsn_env: str = "PG_DSN"
+    dsn_env: str = "PG_ADMIN_DSN"
     exec_timeout_s: int = 30
     row_cap: int = 100
 
@@ -102,6 +102,7 @@ class SystemConfig(BaseModel):
     runner: Literal["openai_compatible", "agentic_local", "openwebui", "claude_cli", "codex_cli"]
     mode: PromptMode
     model: str
+    dsn_env: str | None = None
     provider: ProviderConfig = Field(default_factory=ProviderConfig)
     params: dict[str, Any] = Field(default_factory=dict)
     concurrency: int = 4
@@ -112,7 +113,7 @@ class SystemConfig(BaseModel):
 
 
 class JudgeConfig(BaseModel):
-    runner: Literal["openai_compatible", "claude_cli"] = "claude_cli"
+    runner: Literal["openai_compatible", "claude_cli", "agy_cli"] = "claude_cli"
     model: str = "claude-sonnet-4-6"
     provider: ProviderConfig = Field(default_factory=ProviderConfig)
     params: dict[str, Any] = Field(default_factory=dict)

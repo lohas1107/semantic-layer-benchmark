@@ -1,0 +1,41 @@
+experiment:
+  name: gemma4-26b-pg-permission-owui
+  description: "Gemma 4 26B-A4B on PostgreSQL Contoso via Open WebUI raw mode with restricted marketing account"
+  tags: [postgres, gemma4, agentic, openwebui, permission, marketing]
+
+engine:
+  type: postgres
+  dsn_env: PG_ADMIN_DSN
+  exec_timeout_s: 30
+  row_cap: 100
+
+dataset:
+  path: datasets/postgres/benchmark.json
+  schema: datasets/postgres/schema.sql
+  semantic_layer: datasets/postgres/semantic_layer.md
+
+systems:
+  - id: gemma4-26b__owui-raw-marketing
+    label: "Gemma 4 26B raw (Open WebUI, marketing)"
+    runner: openwebui
+    mode: raw
+    model: google/gemma-4-26B-A4B-it
+    dsn_env: PG_MARKETING_DSN
+    provider:
+      url_env: OPENWEBUI_URL
+      api_key_env: OPENWEBUI_API_KEY
+      tool_id_env: OPENWEBUI_RUN_SQL_MARKETING_TOOL_ID
+    params:
+      timeout_s: 300
+      keep_chats: false
+    concurrency: 2
+
+judge:
+  runner: agy_cli
+  model: gemini-3.8-flash-medium
+  concurrency: 2
+  row_preview_limit: 10
+
+lifecycle:
+  before_run: infra/nebius/endpoint_up.sh --sync-openwebui --model google/gemma-4-26B-A4B-it
+  after_run: infra/nebius/endpoint_down.sh

@@ -71,6 +71,8 @@ class PostgresEngine:
         return None
 
 
-def make_postgres_engine(*, dsn_env: str = "PG_DSN", dsn: str | None = None) -> PostgresEngine:
+def make_postgres_engine(
+    *, dsn_env: str = "PG_ADMIN_DSN", dsn: str | None = None
+) -> PostgresEngine:
     resolved = dsn or require_env(dsn_env)
     return PostgresEngine(resolved)

@@ -26,7 +26,7 @@ def _jsonable(v):
 class Tools:
     class Valves(BaseModel):
         PG_DSN: str = Field(
-            default="postgresql://bench_ro:bench_ro@contoso-pg:5432/contoso",
+            default="postgresql://admin:admin@contoso-pg:5432/contoso",
             description="libpq connection string (use a read-only role)",
         )
         ROW_LIMIT: int = Field(default=20, description="Max rows returned to the model")

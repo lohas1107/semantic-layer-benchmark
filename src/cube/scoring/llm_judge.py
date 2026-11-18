@@ -119,7 +119,7 @@ def parse_judge_cli_output(stdout: bytes) -> JudgeOutcome:
         raise ValueError(f"malformed judge output: {exc}") from exc
     inner = obj.get("structured_output")
     if inner is None:
-        result_str = obj.get("result") or ""
+        result_str = obj.get("result") or obj.get("response") or ""
         try:
             inner = json.loads(result_str)
         except json.JSONDecodeError as exc:
@@ -163,7 +163,7 @@ def _parse_judge_json_text(text: str, *, tokens_in: int, tokens_out: int) -> Jud
 
 
 class LLMJudge:
-    """Configurable LLM-as-judge supporting `claude_cli` and `openai_compatible`."""
+    """Configurable LLM-as-judge supporting `claude_cli`, `agy_cli`, and `openai_compatible`."""
 
     def __init__(
         self,
@@ -232,6 +232,35 @@ class LLMJudge:
             )
         return parse_judge_cli_output(proc.stdout)
 
+    def _invoke_agy_cli(self, user_prompt: str) -> JudgeOutcome:
+        prompt = f"{JUDGE_SYSTEM_PROMPT}\n\n---\n\n{user_prompt}"
+        cmd = [
+            "agy",
+            "--model",
+            self.model,
+            "--disable-slash-commands",
+            "--output-format",
+            "json",
+            "--json-schema",
+            JUDGE_JSON_SCHEMA,
+            "-p",
+            prompt,
+        ]
+        with tempfile.TemporaryDirectory(prefix="cube-judge-") as sbx:
+            proc = subprocess.run(
+                cmd,
+                cwd=sbx,
+                capture_output=True,
+                timeout=self.timeout_s,
+                check=False,
+            )
+        if proc.returncode != 0:
+            raise RuntimeError(
+                f"judge exit {proc.returncode}; stderr: "
+                f"{proc.stderr.decode('utf-8', errors='replace')[:300]}"
+            )
+        return parse_judge_cli_output(proc.stdout)
+
     def _invoke_openai_compatible(self, user_prompt: str) -> JudgeOutcome:
         assert self._openai_client is not None
         resp = self._openai_client.chat.completions.create(
@@ -251,11 +280,12 @@ class LLMJudge:
         return _parse_judge_json_text(content, tokens_in=tin, tokens_out=tout)
 
     def _call_with_retry(self, user_prompt: str) -> JudgeOutcome | None:
-        invoke = (
-            self._invoke_claude_cli
-            if self.runner == "claude_cli"
-            else self._invoke_openai_compatible
-        )
+        if self.runner == "claude_cli":
+            invoke = self._invoke_claude_cli
+        elif self.runner == "agy_cli":
+            invoke = self._invoke_agy_cli
+        else:
+            invoke = self._invoke_openai_compatible
         for attempt in (1, 2):
             try:
                 return invoke(user_prompt)

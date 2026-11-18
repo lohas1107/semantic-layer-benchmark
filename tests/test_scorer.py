@@ -168,3 +168,55 @@ def test_score_sync_calls_judge_for_normal_case(fixtures_dir):
     assert out.judge_tokens_in == 4200
     assert out.judge_tokens_out == 32
     invoke_mock.assert_called_once()
+
+
+def test_parse_judge_cli_output_reads_agy_response():
+    raw = json.dumps(
+        {
+            "status": "SUCCESS",
+            "response": '{"strict_verdict": "pass", "analytical_verdict": "pass", "reason": "ok"}',
+            "usage": {"input_tokens": 1200, "output_tokens": 15},
+        }
+    ).encode()
+    outcome = parse_judge_cli_output(raw)
+    assert outcome.verdict == "pass"
+    assert outcome.analytical_verdict == "pass"
+    assert outcome.reason == "ok"
+    assert outcome.tokens_in == 1200
+    assert outcome.tokens_out == 15
+
+
+def test_score_sync_calls_agy_cli():
+    judge = LLMJudge(runner="agy_cli", model="claude-sonnet-5-5-medium")
+    agy_stdout = json.dumps(
+        {
+            "status": "SUCCESS",
+            "structured_output": {
+                "strict_verdict": "pass",
+                "analytical_verdict": "pass",
+                "reason": "Matches.",
+            },
+            "usage": {"input_tokens": 500, "output_tokens": 20},
+        }
+    ).encode()
+    with patch("cube.scoring.llm_judge.subprocess.run") as run_mock:
+        run_mock.return_value.returncode = 0
+        run_mock.return_value.stdout = agy_stdout
+        out = judge.score_sync(
+            question="q",
+            schema_text="s",
+            expected_sql="SELECT 1",
+            expected_rows=[[1]],
+            expected_row_count=1,
+            candidate_sql="SELECT 1",
+            candidate_rows=[[1]],
+            candidate_row_count=1,
+            candidate_error=None,
+            reference_error=None,
+        )
+    assert out.verdict == "pass"
+    assert out.judge_tokens_in == 500
+    cmd = run_mock.call_args.args[0]
+    assert cmd[0] == "agy"
+    assert "--model" in cmd and "claude-sonnet-5-5-medium" in cmd
+    assert "-p" in cmd

@@ -5,7 +5,7 @@ experiment:
 
 engine:
   type: postgres
-  dsn_env: PG_DSN
+  dsn_env: PG_ADMIN_DSN
   exec_timeout_s: 30
   row_cap: 100
 
@@ -23,7 +23,7 @@ systems:
     provider:
       url_env: OPENWEBUI_URL
       api_key_env: OPENWEBUI_API_KEY
-      tool_id_env: OPENWEBUI_RUN_SQL_TOOL_ID
+      tool_id_env: OPENWEBUI_RUN_SQL_ADMIN_TOOL_ID
     params:
       timeout_s: 300
       keep_chats: false
@@ -37,15 +37,15 @@ systems:
     provider:
       url_env: OPENWEBUI_URL
       api_key_env: OPENWEBUI_API_KEY
-      tool_id_env: OPENWEBUI_RUN_SQL_TOOL_ID
+      tool_id_env: OPENWEBUI_RUN_SQL_ADMIN_TOOL_ID
     params:
       timeout_s: 300
       keep_chats: false
     concurrency: 2
 
 judge:
-  runner: claude_cli
-  model: claude-sonnet-4-6
+  runner: agy_cli
+  model: claude-sonnet-5-5-medium
   concurrency: 5
   row_preview_limit: 10
 

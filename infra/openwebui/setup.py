@@ -2,11 +2,13 @@
 
 1. Ensure an OpenAI-compatible connection to the Nebius vLLM endpoint exists
    (only when NEBIUS_BASE_URL and NEBIUS_TOKEN are set).
-2. Create or update the self-built Workspace Tool `run_sql` from
-   infra/openwebui/run_sql_tool.py and set its PG_DSN valve.
+2. Create or update the self-built Workspace Tools `run_sql_admin` and
+   `run_sql_marketing` from infra/openwebui/run_sql_tool.py and set their
+   PG_DSN valves.
 
-Env: OPENWEBUI_URL, OPENWEBUI_API_KEY (admin), OPENWEBUI_RUN_SQL_TOOL_ID,
-     OPENWEBUI_PG_DSN (DSN as seen from the Open WebUI container),
+Env: OPENWEBUI_URL, OPENWEBUI_API_KEY (admin),
+     OPENWEBUI_RUN_SQL_ADMIN_TOOL_ID, OPENWEBUI_PG_ADMIN_DSN,
+     OPENWEBUI_RUN_SQL_MARKETING_TOOL_ID, OPENWEBUI_PG_MARKETING_DSN,
      NEBIUS_BASE_URL (…/v1), NEBIUS_TOKEN, OPENWEBUI_MODEL (enables its usage capability).
 """
 from __future__ import annotations
@@ -25,7 +27,8 @@ from dotenv import load_dotenv
 from cube.config import REPO_ROOT
 
 TOOL_FILE = REPO_ROOT / "infra" / "openwebui" / "run_sql_tool.py"
-DEFAULT_DSN = "postgresql://bench_ro:bench_ro@contoso-pg:5432/contoso"
+DEFAULT_ADMIN_DSN = "postgresql://admin:admin@contoso-pg:5432/contoso"
+DEFAULT_MARKETING_DSN = "postgresql://marketing:marketing@contoso-pg:5432/contoso"
 NEBIUS_TUNNEL_RE = re.compile(r"^https://[^/]+\.tunnel\.applications\.[^/]+\.nebius\.cloud(/|$)")
 
 
@@ -125,8 +128,16 @@ def main() -> int:
     nb_url, nb_token = os.getenv("NEBIUS_BASE_URL"), os.getenv("NEBIUS_TOKEN")
     if nb_url and nb_token:
         print(ensure_connection(http, nb_url, nb_token))
-    print(ensure_tool(http, os.getenv("OPENWEBUI_RUN_SQL_TOOL_ID", "run_sql"),
-                      os.getenv("OPENWEBUI_PG_DSN", DEFAULT_DSN)))
+    print(ensure_tool(
+        http,
+        os.getenv("OPENWEBUI_RUN_SQL_ADMIN_TOOL_ID", "run_sql_admin"),
+        os.getenv("OPENWEBUI_PG_ADMIN_DSN", DEFAULT_ADMIN_DSN),
+    ))
+    print(ensure_tool(
+        http,
+        os.getenv("OPENWEBUI_RUN_SQL_MARKETING_TOOL_ID", "run_sql_marketing"),
+        os.getenv("OPENWEBUI_PG_MARKETING_DSN", DEFAULT_MARKETING_DSN),
+    ))
     model_id = os.getenv("OPENWEBUI_MODEL")
     if model_id:
         print(ensure_usage_capability(http, model_id))

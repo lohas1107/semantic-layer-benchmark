@@ -221,10 +221,18 @@ def _run_systems(
     if not systems:
         raise ValueError(f"No matching system {system_filter!r} in experiment")
 
-    engine = create_engine(spec.engine)
+    engines: dict[str, DatabaseEngine] = {}
+
+    def _get_engine(dsn_env: str) -> DatabaseEngine:
+        if dsn_env not in engines:
+            cfg = spec.engine.model_copy(update={"dsn_env": dsn_env})
+            engines[dsn_env] = create_engine(cfg)
+        return engines[dsn_env]
+
     try:
         for sys_cfg in systems:
             runner = create_runner(sys_cfg)
+            engine = _get_engine(sys_cfg.dsn_env or spec.engine.dsn_env)
             sys_dir = store.system_dir(sys_cfg.id)
             pending = [
                 q
@@ -256,7 +264,8 @@ def _run_systems(
                     payload = fut.result()
                     store.save_json(store.question_path(sys_dir, q.id), payload)
     finally:
-        engine.close()
+        for eng in engines.values():
+            eng.close()
 
 
 def _score_run(

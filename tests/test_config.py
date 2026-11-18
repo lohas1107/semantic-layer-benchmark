@@ -17,6 +17,15 @@ def test_load_gemma_experiments(repo_root):
     local = load_experiment(repo_root / "experiments" / "gemma4-26b-pg-agentic-local.yaml")
     assert local.systems[0].runner == "agentic_local"
     assert local.systems[1].mode == "semantic"
+    assert local.engine.dsn_env == "PG_ADMIN_DSN"
+    assert local.judge.runner == "agy_cli"
+    assert local.judge.model == "claude-sonnet-5-5-medium"
+
+    perm = load_experiment(repo_root / "experiments" / "gemma4-26b-pg-permission-owui.yaml")
+    assert len(perm.systems) == 1
+    assert perm.systems[0].mode == "raw"
+    assert perm.systems[0].provider.tool_id_env == "OPENWEBUI_RUN_SQL_MARKETING_TOOL_ID"
+    assert perm.judge.runner == "agy_cli"
 
 
 def test_resolve_and_require_env(monkeypatch):
