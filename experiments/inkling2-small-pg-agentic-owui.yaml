@@ -1,0 +1,53 @@
+experiment:
+  name: inkling2-small-pg-agentic-owui
+  description: "Ollama Cloud inkling-2-small on PostgreSQL Contoso via Open WebUI native tool loop (raw vs semantic)"
+  tags: [postgres, inkling2, ollama-cloud, agentic, openwebui]
+
+engine:
+  type: postgres
+  dsn_env: PG_ADMIN_DSN
+  exec_timeout_s: 30
+  row_cap: 100
+
+dataset:
+  path: datasets/postgres/benchmark.json
+  schema: datasets/postgres/schema.sql
+  semantic_layer: datasets/postgres/semantic_layer.md
+
+systems:
+  - id: inkling2-small__owui-raw
+    label: "Inkling 2 Small raw (Open WebUI)"
+    runner: openwebui
+    mode: raw
+    model: inkling-2-small
+    provider:
+      url_env: OPENWEBUI_URL
+      api_key_env: OPENWEBUI_API_KEY
+      tool_id_env: OPENWEBUI_RUN_SQL_ADMIN_TOOL_ID
+    params:
+      timeout_s: 300
+      keep_chats: false
+    concurrency: 2
+
+  - id: inkling2-small__owui-semantic
+    label: "Inkling 2 Small + Sem (Open WebUI)"
+    runner: openwebui
+    mode: semantic
+    model: inkling-2-small
+    provider:
+      url_env: OPENWEBUI_URL
+      api_key_env: OPENWEBUI_API_KEY
+      tool_id_env: OPENWEBUI_RUN_SQL_ADMIN_TOOL_ID
+    params:
+      timeout_s: 300
+      keep_chats: false
+    concurrency: 2
+
+judge:
+  runner: agy_cli
+  model: gemini-3.8-flash-medium
+  concurrency: 2
+  row_preview_limit: 10
+
+lifecycle:
+  before_run: OPENWEBUI_MODEL=inkling-2-small uv run python infra/openwebui/setup.py

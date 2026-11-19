@@ -1,7 +1,8 @@
 """Idempotently configure Open WebUI for the agentic benchmark.
 
-1. Ensure an OpenAI-compatible connection to the Nebius vLLM endpoint exists
-   (only when NEBIUS_BASE_URL and NEBIUS_TOKEN are set).
+1. Ensure an OpenAI-compatible connection exists when credentials are set:
+   - Nebius vLLM endpoint (`NEBIUS_BASE_URL` + `NEBIUS_TOKEN`), or
+   - Ollama Cloud OpenAI-compatible endpoint (`OLLAMA_API_KEY` -> `https://ollama.com/v1`).
 2. Create or update the self-built Workspace Tools `run_sql_admin` and
    `run_sql_marketing` from infra/openwebui/run_sql_tool.py and set their
    PG_DSN valves.
@@ -9,7 +10,8 @@
 Env: OPENWEBUI_URL, OPENWEBUI_API_KEY (admin),
      OPENWEBUI_RUN_SQL_ADMIN_TOOL_ID, OPENWEBUI_PG_ADMIN_DSN,
      OPENWEBUI_RUN_SQL_MARKETING_TOOL_ID, OPENWEBUI_PG_MARKETING_DSN,
-     NEBIUS_BASE_URL (…/v1), NEBIUS_TOKEN, OPENWEBUI_MODEL (enables its usage capability).
+     NEBIUS_BASE_URL (…/v1), NEBIUS_TOKEN, OLLAMA_API_KEY,
+     OPENWEBUI_MODEL (enables its usage capability).
 """
 from __future__ import annotations
 
@@ -128,6 +130,9 @@ def main() -> int:
     nb_url, nb_token = os.getenv("NEBIUS_BASE_URL"), os.getenv("NEBIUS_TOKEN")
     if nb_url and nb_token:
         print(ensure_connection(http, nb_url, nb_token))
+    ollama_key = os.getenv("OLLAMA_API_KEY")
+    if ollama_key:
+        print(ensure_connection(http, "https://ollama.com/v1", ollama_key))
     print(ensure_tool(
         http,
         os.getenv("OPENWEBUI_RUN_SQL_ADMIN_TOOL_ID", "run_sql_admin"),
